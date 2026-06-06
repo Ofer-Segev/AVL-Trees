@@ -58,6 +58,7 @@ class AVLTree(object):
     def __init__(self, is_avl):
         self.root = None
         self.avl = is_avl
+        self.tree_size = 0
 
     """searches for a node in the dictionary corresponding to the key (starting at the root)
 
@@ -166,6 +167,7 @@ class AVLTree(object):
             node.right = self.virtual
             node.height = 0
             self.root = node
+            self.tree_size+=1
             return node, 1, 0, 0
 
         curr = self.root
@@ -189,6 +191,8 @@ class AVLTree(object):
             parent.left = inserted_node
         else:
             parent.right = inserted_node
+
+        self.tree_size+=1
 
         if not self.avl:
             return inserted_node, search_time + 1, 0, 0
@@ -241,11 +245,89 @@ class AVLTree(object):
     """deletes node from the dictionary
 
     @type node: AVLNode
-    @pre: node is a real pointer to a node in self
+    @pre: node is a real pointer to a node in self  
     """
 
     def delete(self, node):
-        return
+        if node is None or not node.is_real_node():
+            return
+
+        parent_to_balance = None
+   
+        if not node.left.is_real_node() or not node.right.is_real_node():
+            child = node.left if node.left.is_real_node() else node.right
+            
+            if child.is_real_node():
+                child.parent = node.parent
+            parent_to_balance = node.parent
+
+            if node.parent is None:
+                self.root = child if child.is_real_node() else None
+            elif node.parent.left is node:
+                node.parent.left = child
+            else:
+                node.parent.right = child
+
+        else:
+            successor = node.right
+            while successor.left.is_real_node():
+                successor = successor.left
+
+            if successor.parent is node:
+                parent_to_balance = successor
+            else:
+                parent_to_balance = successor.parent
+                successor_child = successor.right
+                
+                if successor_child.is_real_node():  
+                    successor_child.parent = successor.parent
+                successor.parent.left = successor_child
+
+
+            successor.parent = node.parent
+            if node.parent is None:
+                self.root = successor
+            elif node.parent.left is node:
+                node.parent.left = successor
+            else:
+                node.parent.right = successor
+
+            successor.left = node.left
+            successor.left.parent = successor
+
+            if node.right is not successor:
+                successor.right = node.right
+                successor.right.parent = successor
+            else:
+                if successor.right.is_real_node():
+                    successor.right.parent = successor
+            
+            successor.height = max(successor.left.height, successor.right.height) + 1
+        self.tree_size -= 1
+
+        if not self.avl:
+            return
+
+        curr = parent_to_balance
+        while curr is not None:
+            old_height = curr.height
+            curr.height = max(curr.left.height, curr.right.height) + 1
+            bf = self.balance_factor(curr)
+
+            if abs(bf) > 1:
+                if bf > 1:
+                    if self.balance_factor(curr.left) >= 0:
+                        curr = self.rotate_right(curr)
+                    else:
+                        self.rotate_left(curr.left)
+                        curr = self.rotate_right(curr)
+                else:
+                    if self.balance_factor(curr.right) <= 0:
+                        curr = self.rotate_left(curr)
+                    else:
+                        self.rotate_right(curr.right)
+                        curr = self.rotate_left(curr)
+            curr = curr.parent
 
     """returns a list representing dictionary 
 
@@ -254,7 +336,17 @@ class AVLTree(object):
     """
 
     def avl_to_list(self):
-        return None
+        res = []
+
+        def inorder(node):
+            if node is None or not node.is_real_node():
+                return
+            inorder(node.left)
+            res.append((node.key, node.value))
+            inorder(node.right)
+
+        inorder(self.root)
+        return res
 
     """returns the number of items in dictionary 
 
@@ -263,7 +355,7 @@ class AVLTree(object):
     """
 
     def size(self):
-        return -1
+        return self.tree_size
 
     """returns the root of the tree representing the dictionary
 
@@ -272,7 +364,9 @@ class AVLTree(object):
     """
 
     def get_root(self):
-        return None
+        if self.root is None or not self.root.is_real_node():
+            return None
+        return self.root
 
     """returns the height of the tree
 
@@ -281,4 +375,15 @@ class AVLTree(object):
         """
 
     def get_height(self):
-        return -1
+        if self.root is None or not self.root.is_real_node():
+            return -1
+        
+        if self.avl:
+            return self.root.height
+    
+        def calc_height(node):
+            if node is None or not node.is_real_node():
+                return -1
+            return max(calc_height(node.left), calc_height(node.right)) + 1
+
+        return calc_height(self.root)
