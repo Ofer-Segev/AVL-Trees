@@ -195,6 +195,10 @@ class AVLTree(object):
         self.tree_size+=1
 
         if not self.avl:
+            curr = parent
+            while curr is not None:
+                curr.height = max(curr.left.height, curr.right.height) + 1
+                curr = curr.parent
             return inserted_node, search_time + 1, 0, 0
 
         rotations = 0
